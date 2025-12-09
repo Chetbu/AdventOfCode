@@ -12,37 +12,44 @@ inter_time = time.time()
 
 def generate_edge_rectangle(c0,c1):
     # create a list of all the tuple between c1 and c2
-    if c0[0] - c1[0] == 0:
-        increment_h = 0
-    else:
-        increment_h = -int((c0[0] - c1[0])/abs(c0[0] - c1[0]))
-    space_h = abs(c0[0] - c1[0]) + 1
-
-    if c0[1] - c1[1] == 0:
-        increment_v = 0
-    else:
-        increment_v = -int((c0[1] - c1[1])/abs(c0[1] - c1[1]))
-    space_v = abs(c0[1] - c1[1]) + 1
+    x_0 = min(c0[0], c1[0])
+    x_1 = max(c0[0], c1[0])
+    y_0 = min(c0[1], c1[1])
+    y_1 = max(c0[1], c1[1])
 
     t1 = []
     t2 = []
     t3 = []
     t4 = []
-    h = 0
-    while h < space_h:
-        v = 0
-        t1.append((c0[0] + h * increment_h, c0[1]))
-        t2.append((c0[0] + h * increment_h, c1[1]))
-        h += 1
-    v = 0
-    while v < space_v:
-        t3.append((c0[0], c0[1] + v * increment_v))
-        t4.append((c1[0], c0[1] + v * increment_v))
-        v += 1
+
+    for x in range(x_0, x_1 + 1, 1):
+        t1.append((x,y_0))
+        t2.append((x,y_1))
+    for y in range(y_0, y_1 + 1, 1):
+        t3.append((x_0, y))
+        t4.append((x_1,y))
     res = [t1,t2,t3,t4]
     return res
 
-# print(generate_edge_rectangle((0,0),(0,5)))
+# print(generate_edge_rectangle2((0,0),(2,5)))
+cache_dict = {}
+def is_in_loop(gap_cell, c_array):
+        if (gap_cell[0],0) in cache_dict:
+            screen_array_0 = cache_dict[(gap_cell[0],0)]
+        else:
+            screen_array_0 = [c[1] for c in c_array if c[0] == gap_cell[0]]
+            cache_dict[(gap_cell[0],0)] = screen_array_0
+        if (0,gap_cell[1]) in cache_dict:
+            screen_array_1 = cache_dict[(0,gap_cell[1])]
+        else:
+            screen_array_1 = [c[0] for c in c_array if c[1] == gap_cell[1]]
+            cache_dict[(0,gap_cell[1])] = screen_array_1
+        
+        if (min(screen_array_1) <= gap_cell[0] <= max(screen_array_1)) and (min(screen_array_0) <= gap_cell[1] <= max(screen_array_0)):
+            return True
+        else:
+            return False
+
 
 with open(file_filepath) as f:
     lines = f.read().splitlines()
@@ -103,20 +110,22 @@ print(f"Time to generate tuple area list of {len(tuple_area_list)} element", tim
 inter_time = time.time()        
 
 
+time_edge_rectangle = 0
+time_gap_array = 0
+time_check_is_in = 0
 
 i = 0
 found = False
 while not found:
+    split_time = time.time()
     c1 = tuple_area_list[i][0]
     c2 = tuple_area_list[i][1]
-    
     edge_array = generate_edge_rectangle(c1,c2)
-    # print(c1,c2,edge_array)
-    # print("Time to generate the edge of rectangle", time.time() - inter_time)
-    # inter_time = time.time()
+
 
     found = True
-
+    time_edge_rectangle += time.time() - split_time
+    split_time = time.time()
     for edge_c_array in edge_array:
         #check if the edge intersect with the edge of the loop
 
@@ -124,6 +133,8 @@ while not found:
         # print(gap_array)
         # print("Time to generate the gap array", time.time() - inter_time)
         # inter_time = time.time()
+
+        split_time = time.time()
 
         if len(gap_array) > 0:
             gap_array_2 = [gap_array[0]]
@@ -135,17 +146,17 @@ while not found:
                 j+=1
         else:
             gap_array_2 = []
-    
+
+        time_gap_array += time.time() - split_time
 
         # print("Number of gaps to check", len(gap_array), len(gap_array_2))
         # print("Time to generate the gap to check", time.time() - inter_time)
         # inter_time = time.time()
 
         #for each cell of the gap array, check if the cell is in the loop
+        split_time = time.time()
         for gap_cell in gap_array_2:
-            screen_array_0 = [c[1] for c in c_array if c[0] == gap_cell[0]]
-            screen_array_1 = [c[0] for c in c_array if c[1] == gap_cell[1]]
-            if (min(screen_array_1) <= gap_cell[0] <= max(screen_array_1)) and (min(screen_array_0) <= gap_cell[1] <= max(screen_array_0)):
+            if is_in_loop(gap_cell,c_array):
                 #cell is in the loop
                 continue
             else:
@@ -154,11 +165,16 @@ while not found:
                 break
         if not found:
             break
+        time_check_is_in += time.time() - split_time
+        split_time = time.time()
 
     if found:
         print(f"Max area is {tuple_area_list[i][2]}")
     if i % 100 == 0:
-        print("Time to check 100 rectangles", time.time() - inter_time)
+        print("Time to check 100 rectangles", time.time() - inter_time, "edge time : ", time_edge_rectangle, "gap generation time :" , time_gap_array, "Time check is in :", time_check_is_in)
+        time_edge_rectangle = 0
+        time_gap_array = 0
+        time_check_is_in = 0
         inter_time = time.time()
 
     i += 1
